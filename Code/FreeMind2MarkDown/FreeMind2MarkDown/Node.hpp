@@ -22,6 +22,7 @@ class Node
 {
 public:
     string name ;
+    string link ;
     int level ;
     int number ;
     bool isClosed ;

@@ -27,6 +27,23 @@ string getTEXT(smatch matches) {
     return retrunText;
 }
 
+string getLINK(smatch matches) {
+    string key = "";
+    string retrunText = "";
+    bool isLink = false;
+    for (size_t i = 1; i < matches.size(); i++) {
+        string match(matches[i].first, matches[i].second);
+        if (isLink) {
+            retrunText = match;
+            break;
+        }
+        if (match=="LINK") {
+            isLink = true;
+        }
+    }
+    return retrunText;
+}
+
 
 string  getTableOfContent(Node* node,int level) {
     string tableOfContent = "";
@@ -42,13 +59,7 @@ string  getTableOfContent(Node* node,int level) {
         for (int i = 1; i < node->level; i++) {
             tableOfContent.append("\t");
         }
-        if (node->level==1) {
-            tableOfContent.append(node->chapter);
-        }
-        else {
-            tableOfContent.append("* ");
-        }
-        
+        tableOfContent.append("* ");
         tableOfContent.append(" [" + node->name + "](#" + node->name + ")" + "\n");
     }
     
@@ -75,18 +86,28 @@ string  getContent(Node* node,int level) {
     }
     
     if (!node->isRoot) {
-        context.append("<a name=" + node->name +"></a>\n");
-        for (int i = 0; i < node->level; i++) {
-            context.append("#");
-        }
-        context.append("#");
-        context.append("\t");
-        if (nochapter) {
-            context.append(node->name + "\n\n");
+        
+        if (node->level == 1) {
+            context.append("\n");
+            context.append("<a name=\"" + node->name +"\"></a>\n");
+            context.append("##");
         }
         else {
-            context.append(node->chapter + "" + node->name + "\n\n");
+            for (int i = 2; i < node->level; i++) {
+                context.append("\t");
+            }
+            context.append("* ");
         }
+        
+        string nodeTitle = "";
+        if (node->link != "") {
+           nodeTitle = "["+node->name+"]("+node->link+")";
+        }
+        else {
+           nodeTitle = node->name;
+        }
+        
+        context.append(nodeTitle + "\n");
     }
     
     level--;
@@ -102,23 +123,26 @@ string  getContent(Node* node,int level) {
     return context;
 }
 
-Node* createNode(string nodeName,int level,int number) {
+Node* createNode(string nodeName,int level,int number,string link) {
     Node* nNode = new Node();
     nNode->name = nodeName;
     nNode->level = level;
     nNode->number = number;
+    nNode->link = link;
     return nNode;
 }
 
 int main(int argc, const char * argv[]) {
     
-    string inputfile = "";
-    string outputfile = "";
+    string inputfile = "iOSKnowledge.mm";
+    string outputfile = "iOSKnowledge.md";
     
-    cout << "Please enter input file:";
-    getline(cin, inputfile);
-    cout << "Please enter output file:";
-    getline(cin, outputfile);
+//    cout << "Please enter input file:";
+//    getline(cin, inputfile);
+//    cout << "Please enter output file:";
+//    getline(cin, outputfile);
+//    
+    
     
     ifstream input;
     ifstream ouput;
@@ -134,43 +158,48 @@ int main(int argc, const char * argv[]) {
     while ( getline (mmfile,readLine) ) // read line by line
     {
         string text(readLine);
-        regex expr0("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\"/>");
-        regex expr1("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\">");
-        regex expr2("</node>");
+        
+        regex expr0("</node>");
+        
+        regex expr1("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\"/>");
+        regex expr2("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\">");
+        
+        regex expr3("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\"/>");
         regex expr4("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\">");
-        regex expr5("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\">");
+        
+        regex expr5("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\"/>");
+        regex expr6("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\">");
+        
+        regex expr7("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\"/>");
+        regex expr8("<node (.*?)=\"(.*?)\" (.*?)=\"(.*?)\" (.*?)=\"(.*?)\\\">");
         
         smatch matches;
-        
         string nodeName = "" ;
+        string link ="";
         Node * nNode = NULL;
         
         if (regex_match(text, matches, expr0)) {
             nodeName = getTEXT(matches);
-            nNode = createNode(nodeName, currentLevel, currentNum);
-            nNode->setNodeClose(currentLevel);
-        }
-        else if (regex_match(text, matches, expr5)) {
-            nodeName = getTEXT(matches);
-            nNode = createNode(nodeName, currentLevel, currentNum);
-            currentLevel++;
-        }
-        else if (regex_match(text, matches, expr4)) {
-            nodeName = getTEXT(matches);
-            nNode = createNode(nodeName, currentLevel, currentNum);
-            currentLevel++;
-        }
-        else if (regex_match(text, matches, expr1)) {
-            nodeName = getTEXT(matches);
-            nNode = createNode(nodeName, currentLevel, currentNum);
-            currentLevel++;
-        }
-        else if (regex_match(text, matches, expr2)) {
-            nodeName = getTEXT(matches);
             currentLevel--;
             root->setNodeClose(currentLevel);
-            
         }
+        else if (regex_match(text, matches, expr1) || regex_match(text, matches, expr3) || regex_match(text, matches, expr5) || regex_match(text, matches, expr7)) {
+            nodeName = getTEXT(matches);
+            link = getLINK(matches);
+            nNode = createNode(nodeName, currentLevel, currentNum,link);
+            nNode->setNodeClose(currentLevel);
+        }
+        else if (regex_match(text, matches, expr2) || regex_match(text, matches, expr4) || regex_match(text, matches, expr6) || regex_match(text, matches, expr8)) {
+            nodeName = getTEXT(matches);
+            link = getLINK(matches);
+            nNode = createNode(nodeName, currentLevel, currentNum,link);
+            currentLevel++;
+        }
+//        else {
+//            printf("other");
+//            printf("%s \n",text.c_str());
+//        }
+        
         
         if (nNode) {
             if (!root) {
@@ -185,7 +214,7 @@ int main(int argc, const char * argv[]) {
     }
     input.close();
     
-    string contextAll = getTableOfContent(root, 3);
+    string contextAll = getTableOfContent(root, 2);
     contextAll.append("\n");
     contextAll.append(getContent(root, 3));
     mdfile << contextAll ;
